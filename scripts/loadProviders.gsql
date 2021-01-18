@@ -1,0 +1,11 @@
+DROP JOB loadProviders
+
+CREATE LOADING JOB loadProviders FOR GRAPH simpleHealth {
+
+    DEFINE FILENAME f1 = "/home/tigergraph/tigergraph/data/gui/loading_data/providers.csv";
+
+    LOAD f1
+        TO VERTEX Providers VALUES ($0, $2, $11, $4),
+        TO EDGE PROVIDER_HAS_ORGANIZATION VALUES ($0, $1)
+        USING HEADER="true", SEPARATOR=",";
+    }

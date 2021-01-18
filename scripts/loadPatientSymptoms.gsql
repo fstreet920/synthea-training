@@ -1,0 +1,11 @@
+DROP JOB loadPatientSymptoms
+
+CREATE LOADING JOB loadPatientSymptoms FOR GRAPH simpleHealth {
+
+    DEFINE FILENAME f1 = "/home/tigergraph/tigergraph/data/gui/loading_data/symptoms.csv";
+
+    LOAD f1
+        TO VERTEX Symptoms VALUES($0, $8, $9, $7),
+        TO EDGE PATIENT_HAS_SYMPTOM VALUES($1, $0, $5, $6)
+        USING HEADER="true", SEPARATOR=",";
+}
