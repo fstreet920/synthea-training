@@ -1,0 +1,17 @@
+DROP JOB loadEncounters
+
+CREATE LOADING JOB loadEncounters FOR GRAPH simpleHealthDeux{
+
+    DEFINE FILENAME f1 = "/home/tigergraph/tigergraph/data/gui/loading_data/encounters.csv";
+
+    LOAD f1
+        TO VERTEX Encounter VALUES ($0, $10, $11, $12, $7, $1, $2),
+        TO VERTEX SnomedCode VALUES ($8, $9),
+        TO VERTEX SnomedCode VALUES ($13, $14),
+        TO EDGE ENCOUNTER_FOR_PATIENT VALUES ($0, $3),
+        TO EDGE ENCOUNTER_UNDER_ORGANIZATION VALUES ($0, $4),
+        TO EDGE ENCOUNTER_HAS_PROVIDER VALUES ($0, $5),
+        TO EDGE ENCOUNTER_CODE VALUES ($0, $8),
+        TO EDGE ENCOUNTER_REASON_CODE VALUES ($0, $13)
+        USING HEADER="true", SEPARATOR=",";
+}

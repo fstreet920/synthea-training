@@ -1,0 +1,11 @@
+DROP JOB loadCareplans
+
+CREATE LOADING JOB loadCareplans FOR GRAPH simpleHealthDeux {
+
+    DEFINE FILENAME f1 = "/home/tigergraph/tigergraph/data/gui/loading_data/careplans.csv";
+
+    LOAD f1
+        TO VERTEX Careplans VALUES ($0, $6, $1, $2),
+        TO EDGE PATIENT_HAS_CAREPLAN VALUES ($0, $3)
+        USING HEADER="true", SEPARATOR=",";
+    }

@@ -1,0 +1,15 @@
+DROP JOB loadImmunizations
+
+CREATE LOADING JOB loadImmunizations FOR GRAPH simpleHealthDeux {
+
+    DEFINE FILENAME f1 = "/home/tigergraph/tigergraph/data/gui/loading_data/immunizations.csv";
+
+    LOAD f1
+        TO VERTEX Immunizations VALUES ($0, $4, $5, $1, $6),
+        TO VERTEX SnomedCode VALUES ($4, $5),
+        TO EDGE IMMUNIZATION_CODE VALUES ($0, $4),
+        TO EDGE PATIENT_HAS_IMMUNIZATION VALUES ($0, $2),
+        TO EDGE ENCOUNTER_FOR_IMMUNIZATION VALUES ($0, $3)
+        USING HEADER="true", SEPARATOR=",";
+
+}

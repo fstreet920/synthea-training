@@ -1,0 +1,5 @@
+
+
+
+Extended Attribute Modeling - Race, ethnicity, gender
+Geospatial - Lat Long and address info for modeling city state zip code and how to model lat long.
