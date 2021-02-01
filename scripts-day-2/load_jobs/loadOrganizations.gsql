@@ -1,0 +1,13 @@
+DROP JOB loadOrganizations
+
+CREATE LOADING JOB loadOrganizations FOR GRAPH simpleHealthDeux {
+
+    DEFINE FILENAME f1 = "/home/tigergraph/tigergraph/data/gui/loading_data/organizations.csv";
+
+    # Id,NAME,ADDRESS,CITY,STATE,ZIP,LAT,LON,PHONE,REVENUE,UTILIZATION
+
+    LOAD f1
+        TO VERTEX Organizations VALUES ($0, $1, $2, $3, $4, $5, $6, $7, $9, $10, $8)
+        USING HEADER="true", SEPARATOR=",";
+
+}
