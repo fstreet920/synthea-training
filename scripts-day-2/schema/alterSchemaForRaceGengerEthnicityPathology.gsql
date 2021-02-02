@@ -1,0 +1,21 @@
+
+CREATE SCHEMA_CHANGE JOB alter_schema FOR GRAPH simpleHealthDeux {
+    ADD VERTEX Gender(PRIMARY_ID id STRING) WITH STATS="OUTDEGREE_BY_EDGETYPE", PRIMARY_ID_AS_ATTRIBUTE="true";
+    ADD VERTEX Race(PRIMARY_ID id STRING) WITH STATS="OUTDEGREE_BY_EDGETYPE", PRIMARY_ID_AS_ATTRIBUTE="true";
+    ADD VERTEX Ethnicity(PRIMARY_ID id STRING) WITH STATS="OUTDEGREE_BY_EDGETYPE", PRIMARY_ID_AS_ATTRIBUTE="true";
+    ADD VERTEX Pathology(PRIMARY_ID id_name STRING) WITH STATS="OUTDEGREE_BY_EDGETYPE", PRIMARY_ID_AS_ATTRIBUTE="true";
+
+    ALTER VERTEX Patient DROP ATTRIBUTE (gender, race, ethnicity);
+    ALTER VERTEX Providers DROP ATTRIBUTE (gender);
+    ALTER VERTEX Symptoms DROP ATTRIBUTE (race, ethnicity, gender, pathology);
+
+
+    ADD DIRECTED EDGE is_gender(FROM Patient, TO Gender|FROM Providers, TO Gender) WITH REVERSE_EDGE="reverse_is_gender";
+    ADD DIRECTED EDGE is_race(FROM Patient, TO Race) WITH REVERSE_EDGE="reverse_is_race";
+    ADD DIRECTED EDGE has_ethnicity(FROM Patient, TO Ethnicity) WITH REVERSE_EDGE="reverse_has_ethnicity";
+    ADD DIRECTED EDGE has_symptoms(FROM Pathology, TO Symptoms) WITH REVERSE_EDGE="reverse_has_symptoms";
+    ADD DIRECTED EDGE associated_with(FROM Pathology, TO Ethnicity|FROM Pathology, TO Race|FROM Pathology, TO Gender) WITH REVERSE_EDGE="reverse_associated_with";
+    ADD DIRECTED EDGE patient_has_pathology(FROM Patient, TO Pathology) WITH REVERSE_EDGE="reverse_patient_has_pathology";
+}
+
+
