@@ -7,7 +7,19 @@ CREATE LOADING JOB loadPatientSymptoms FOR GRAPH simpleHealthDeux {
     # ID,PATIENT,GENDER,RACE,ETHNICITY,AGE_BEGIN,AGE_END,PATHOLOGY,NUM_SYMPTOMS,SYMPTOMS
 
     LOAD f1
-        TO VERTEX Symptoms VALUES($0, $3, $4, $2, $8, $9, $7),
-        TO EDGE PATIENT_HAS_SYMPTOM VALUES($1, $0, $5, $6)
+        TO VERTEX Symptoms VALUES($"ID", $"SYMPTOMS", $"NUM_SYMPTOMS"),
+        TO VERTEX Pathology VALUES($"PATHOLOGY"),
+        TO VERTEX Gender VALUES($"GENDER"),
+        TO VERTEX Race VALUES($"RACE"),
+        TO VERTEX Ethnicity VALUES($"ETHNICITY"),
+
+        TO EDGE PATIENT_HAS_SYMPTOM VALUES($"PATIENT", $"ID", $"AGE_BEGIN", $"AGE_END"),
+        TO EDGE has_symptoms VALUES ($"PATHOLOGY", $"ID"),
+        TO EDGE associated_with VALUES ($"PATHOLOGY", $"ETHNICITY" Ethnicity),
+        TO EDGE associated_with VALUES ($"PATHOLOGY", $"RACE" Race),
+        TO EDGE associated_with VALUES ($"PATHOLOGY",$"GENDER" Gender),
+        TO EDGE patient_has_pathology VALUES ($"PATIENT",$"PATHOLOGY")
+
+
         USING HEADER="true", SEPARATOR=",";
 }
