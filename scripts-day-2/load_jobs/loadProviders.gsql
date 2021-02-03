@@ -7,7 +7,9 @@ CREATE LOADING JOB loadProviders FOR GRAPH simpleHealthDeux {
     # Id,ORGANIZATION,NAME,GENDER,SPECIALITY,ADDRESS,CITY,STATE,ZIP,LAT,LON,UTILIZATION
 
     LOAD f1
-        TO VERTEX Providers VALUES ($0, $2, $3, $11, $4, $5, $6, $7, $8, $9, $10),
-        TO EDGE PROVIDER_HAS_ORGANIZATION VALUES ($0, $1)
+        TO VERTEX Providers VALUES ($"Id", $"NAME", $"UTILIZATION", $"SPECIALITY", $"ADDRESS", $"CITY", $"STATE", $"ZIP", $"LAT", $"LON"),
+        TO VERTEX Gender VALUES($"GENDER"),
+        TO EDGE is_gender VALUES($"Id" Providers, $"GENDER"),
+        TO EDGE PROVIDER_HAS_ORGANIZATION VALUES ($"Id", $"ORGANIZATION")
         USING HEADER="true", SEPARATOR=",";
     }
