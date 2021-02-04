@@ -4,12 +4,14 @@ CREATE LOADING JOB loadImmunizations FOR GRAPH simpleHealth {
 
     DEFINE FILENAME f1 = "/home/tigergraph/tigergraph/data/gui/loading_data/immunizations.csv";
 
+    # ID,DATE,PATIENT,ENCOUNTER,CODE,DESCRIPTION,BASE_COST
+
     LOAD f1
-        TO VERTEX Immunizations VALUES ($0, $4, $5, $1, $6),
-        TO VERTEX SnomedCode VALUES ($4, $5),
-        TO EDGE IMMUNIZATION_CODE VALUES ($0, $4),
-        TO EDGE PATIENT_HAS_IMMUNIZATION VALUES ($0, $2),
-        TO EDGE ENCOUNTER_FOR_IMMUNIZATION VALUES ($0, $3)
+        TO VERTEX Immunizations VALUES ($"ID", $"CODE", $"DESCRIPTION", $"DATE", $"BASE_COST"),
+        TO VERTEX SnomedCode VALUES ($"CODE", $"DESCRIPTION"),
+        TO EDGE IMMUNIZATION_CODE VALUES ($"ID", $"CODE"),
+        TO EDGE PATIENT_HAS_IMMUNIZATION VALUES ($"ID", $"PATIENT"),
+        TO EDGE ENCOUNTER_FOR_IMMUNIZATION VALUES ($"ID", $"ENCOUNTER")
         USING HEADER="true", SEPARATOR=",";
 
 }
