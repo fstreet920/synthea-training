@@ -4,8 +4,10 @@ CREATE LOADING JOB loadPatientSymptoms FOR GRAPH simpleHealth {
 
     DEFINE FILENAME f1 = "/home/tigergraph/tigergraph/data/gui/loading_data/symptoms.csv";
 
+    # ID,PATIENT,GENDER,RACE,ETHNICITY,AGE_BEGIN,AGE_END,PATHOLOGY,NUM_SYMPTOMS,SYMPTOMS
+
     LOAD f1
-        TO VERTEX Symptoms VALUES($0, $8, $9, $7),
-        TO EDGE PATIENT_HAS_SYMPTOM VALUES($1, $0, $5, $6)
+        TO VERTEX Symptoms VALUES($"ID", $"RACE", $"ETHNICITY", $"GENDER", $"SYMPTOMS", $"NUM_SYMPTOMS", $"PATHOLOGY"),
+        TO EDGE PATIENT_HAS_SYMPTOM VALUES($"PATIENT", $"ID", $"AGE_BEGIN", $"AGE_END")
         USING HEADER="true", SEPARATOR=",";
 }
