@@ -1,0 +1,20 @@
+CREATE QUERY VertexInducedSelection(/* Parameters here */) FOR GRAPH simpleHealth { 
+  
+  // seed set containing all providers
+  providerList = {Providers.*};
+  
+  // Find providers that are not General Practice, Clinical Social Worker, 
+  // Physician Assistant, or contains NURSE
+  
+  specialistList = SELECT spec 
+                   FROM providerList:spec
+                   WHERE spec.specialty != "GENERAL PRACTICE"
+                       AND spec.specialty != "CLINICAL SOCIAL WORKER"
+                       AND spec.specialty != "PHYSICIAN ASSISTANT"
+                       AND spec.specialty NOT LIKE "%NURSE%";
+
+  // print the results - the list size and the vertex instances
+  PRINT specialistList.size(), specialistList;
+  
+}
+

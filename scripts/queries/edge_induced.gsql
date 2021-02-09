@@ -1,0 +1,40 @@
+CREATE QUERY EdgeInducedSelection(/* Parameters here */) FOR GRAPH simpleHealth SYNTAX V2{ 
+  
+ // seed set containing all SnomedCodes
+  snomedCodeList = {SnomedCode.*};
+
+  // seed set containing all encounters
+  encountersList = {Encounter.*};
+  
+  PRINT snomedCodeList.size(); PRINT snomedCodeList;
+
+  // select codes that seem 'wellness related'
+  wellnessCodes = SELECT codes 
+                 FROM snomedCodeList:codes
+                 WHERE codes.description LIKE "%Well%"
+                      OR codes.description LIKE "%check-up%"
+                      OR codes.description LIKE "%General examination%";
+  
+  PRINT wellnessCodes.size(); PRINT wellnessCodes;
+  
+  // wellness encounters based on Snomed Codes
+  wellnessEncounters = SELECT wellness
+                       FROM wellnessCodes:code-(<ENCOUNTER_CODE:e)-Encounter:wellness;
+
+  PRINT wellnessEncounters.size(); PRINT wellnessEncounters;
+  
+  // wellness codes from encounters classified as wellness
+  wellnessCodesFromEncounters = SELECT enccodes
+                                FROM encountersList:enc-(ENCOUNTER_CODE>:ec)-SnomedCode:enccodes
+                                WHERE enc.classType == "wellness";
+  
+  PRINT wellnessCodesFromEncounters.size();PRINT wellnessCodesFromEncounters;
+  
+  // Death Certificate is 'Wellness'
+  deathCertEncounters = SELECT enc_death
+                       FROM snomedCodeList:code-(<ENCOUNTER_CODE:e)-Encounter:enc_death
+                       WHERE code.description == "Death Certification";
+  
+  PRINT deathCertEncounters.size();PRINT deathCertEncounters;
+
+}

@@ -1,0 +1,11 @@
+CREATE QUERY providersEncountersPatients(VERTEX<Providers> prov) FOR GRAPH simpleHealth SYNTAX V2{ 
+  // d4d2f80e-be33-387d-8815-60c81bb10fa6
+  startingProv = {prov};
+  
+  provPatients = SELECT patient
+                 FROM startingProv:provider-(ENCOUNTER_HAS_PROVIDER:prov_enc)-Encounter:enc-(ENCOUNTER_FOR_PATIENT:pat_enc)-Patient:patient;
+  
+  
+  PRINT prov; 
+  PRINT provPatients.size();PRINT provPatients;
+}

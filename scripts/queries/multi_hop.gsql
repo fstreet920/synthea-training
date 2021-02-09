@@ -1,0 +1,37 @@
+CREATE QUERY MultiHopTraversal(/* Parameters here */) FOR GRAPH simpleHealth SYNTAX V2{ 
+  // seed our symptoms
+  symptomList = {Symptoms.*};
+  
+  // get covid related symptoms
+  covidRelated = SELECT cvd 
+                 FROM symptomList:cvd
+                 WHERE cvd.pathology LIKE "%COVID-19";
+  PRINT covidRelated.size(); PRINT covidRelated;
+  
+  // find providers treating patients with covid related symptoms
+  providersWithCovidRelatedPatients = SELECT prov
+                                      FROM covidRelated:cvd-(PATIENT_HAS_SYMPTOM:ps)-Patient:p-(ENCOUNTER_FOR_PATIENT:pe)-Encounter:e-(ENCOUNTER_HAS_PROVIDER:eprov)-Providers:prov;
+  
+  PRINT providersWithCovidRelatedPatients.size();
+       
+  // find providers treating patients that have Suspected COVID-19
+  providers2 = SELECT pv
+               FROM providersWithCovidRelatedPatients:pv-(ENCOUNTER_HAS_PROVIDER.ENCOUNTER_FOR_PATIENT.PATIENT_HAS_SYMPTOM)-Symptoms:s
+               WHERE s.pathology LIKE "%Suspected COVID-19%";
+  
+  PRINT providers2.size();
+
+  // how many confirmed COVID-19
+  covidConfirmed = SELECT cvd 
+                 FROM symptomList:cvd
+                 WHERE cvd.pathology == "COVID-19";
+  PRINT covidConfirmed.size();
+
+  // how many suspected COVID-19
+  covidSuspected = SELECT cvd 
+                 FROM symptomList:cvd
+                 WHERE cvd.pathology == "Suspected COVID-19";
+  PRINT covidSuspected.size();
+  
+  
+}
