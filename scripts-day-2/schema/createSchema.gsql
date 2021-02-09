@@ -16,7 +16,7 @@ CREATE SCHEMA_CHANGE JOB change_schema FOR GRAPH simpleHealthDeux {
                         zip STRING, lat DOUBLE,lon DOUBLE, revenue DOUBLE, utilization INT, 
                         phone STRING) WITH primary_id_as_attribute="true";
 
-    ADD VERTEX Providers(PRIMARY_ID provider_id STRING, name STRING, gender STRING, utilization INT, speciality STRING, 
+    ADD VERTEX Providers(PRIMARY_ID provider_id STRING, name STRING, gender STRING, utilization INT, specialty STRING, 
                         address STRING, city STRING, state STRING, zip STRING, lat DOUBLE,lon DOUBLE) 
                         WITH primary_id_as_attribute="true";
 
