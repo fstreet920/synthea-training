@@ -1,6 +1,6 @@
 DROP JOB loadPatient
 
-CREATE LOADING JOB loadPatient FOR GRAPH simpleHealth{
+CREATE LOADING JOB loadPatients FOR GRAPH simpleHealth{
 
     DEFINE FILENAME f1 = "/home/tigergraph/tigergraph/data/gui/loading_data/patients.csv";
 
