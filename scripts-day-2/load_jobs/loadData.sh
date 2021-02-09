@@ -20,7 +20,7 @@ $gsql -g simpleHealthDeux -ca tgcloud.cer RUN LOADING JOB loadOrganizations
 
 # load patients
 $gsql -g simpleHealthDeux -ca tgcloud.cer loadPatients.gsql
-$gsql -g simpleHealthDeux -ca tgcloud.cer RUN LOADING JOB loadPatient
+$gsql -g simpleHealthDeux -ca tgcloud.cer RUN LOADING JOB loadPatients
 
 # load patients symptoms
 $gsql -g simpleHealthDeux -ca tgcloud.cer loadPatientSymptoms.gsql
