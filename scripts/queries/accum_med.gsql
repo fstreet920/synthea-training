@@ -1,5 +1,43 @@
-Accum -
-Providers with most patients, shared patients
-Highest billing provider min, max, avg, sum  - one example Provider then Exercise with Patient.
+CREATE QUERY AccumMedInfo(VERTEX<Providers> prov) FOR GRAPH simpleHealth SYNTAX V2{ 
+  // Provider patient count
+  SetAccum<STRING> @patients;
+  SetAccum<STRING> @providers;
+  SumAccum<FLOAT> @cost;
+  SumAccum<INT> @totalPatients;
+  SumAccum<INT> @totalEncounters;
+  MaxAccum<FLOAT> @@maxEncounterCost;
+  MinAccum<FLOAT> @@minEncounterCost;
+  
+  patientsList = {Patient.*};
+  providerList = {Providers.*};
+  
+    
+  
+  providersWithPatients = SELECT pvdr
+  //                        FROM patientsList:pl-(ENCOUNTER_FOR_PATIENT.ENCOUNTER_HAS_PROVIDER)-Providers:pvdr
+                          FROM patientsList:pl-(ENCOUNTER_FOR_PATIENT:pe)-Encounter:enc-(ENCOUNTER_HAS_PROVIDER)-Providers:pvdr
+                          ACCUM
+                           pvdr.@patients += pl.patient_id,
+                           pl.@providers += pvdr.provider_id,
+                           pl.@cost += enc.totalClaimCost - enc.payerCoverage,
+                           pvdr.@cost += enc.totalClaimCost,
+                           @@maxEncounterCost += enc.totalClaimCost,
+                           @@minEncounterCost += enc.totalClaimCost,
+                           pl.@totalEncounters += 1,
+                           pvdr.@totalEncounters += 1
+                          POST-ACCUM
+                           pvdr.@totalPatients += pvdr.@patients.size()
+                          ORDER BY pvdr.@totalPatients DESC;
 
 
+  PRINT @@maxEncounterCost; PRINT @@minEncounterCost; 
+  PRINT providersWithPatients;
+  PRINT patientsList;
+  
+  
+  //provPatients = SELECT p
+  //               FROM providerList:pl-(ENCOUNTER_HAS_PROVIDER:prov_enc)-Encounter:enc-(ENCOUNTER_FOR_PATIENT:pat_enc)-Patient:p
+  //               ACCUM
+  //                 pl.@provCount += 1;
+  
+}
