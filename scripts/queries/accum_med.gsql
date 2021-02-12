@@ -1,43 +1,52 @@
-CREATE QUERY AccumMedInfo(VERTEX<Providers> prov) FOR GRAPH simpleHealth SYNTAX V2{ 
-  // Provider patient count
+CREATE QUERY AccumMedInfo() FOR GRAPH simpleHealth SYNTAX V2{ 
+  // Provider/patient sets
   SetAccum<STRING> @patients;
   SetAccum<STRING> @providers;
-  SumAccum<FLOAT> @cost;
   SumAccum<INT> @totalPatients;
-  SumAccum<INT> @totalEncounters;
+  
+  // encounter costs
+  SumAccum<FLOAT> @cost;
   MaxAccum<FLOAT> @@maxEncounterCost;
   MinAccum<FLOAT> @@minEncounterCost;
   
+  // encounters totals
+  SumAccum<INT> @@totalEncountersWithProviders;
+  SumAccum<INT> @totalProviderEncounters;
+  
+  // seed the patientsList and providersList
   patientsList = {Patient.*};
-  providerList = {Providers.*};
   
     
-  
+  // select providers from patient's encounters  
   providersWithPatients = SELECT pvdr
-  //                        FROM patientsList:pl-(ENCOUNTER_FOR_PATIENT.ENCOUNTER_HAS_PROVIDER)-Providers:pvdr
                           FROM patientsList:pl-(ENCOUNTER_FOR_PATIENT:pe)-Encounter:enc-(ENCOUNTER_HAS_PROVIDER)-Providers:pvdr
                           ACCUM
+                           //Global Accumulators
+                           @@maxEncounterCost += enc.totalClaimCost,
+                           @@minEncounterCost += enc.totalClaimCost,
+                           @@totalEncountersWithProviders += 1,
+  
+                           //Vertex Attached
                            pvdr.@patients += pl.patient_id,
                            pl.@providers += pvdr.provider_id,
                            pl.@cost += enc.totalClaimCost - enc.payerCoverage,
                            pvdr.@cost += enc.totalClaimCost,
-                           @@maxEncounterCost += enc.totalClaimCost,
-                           @@minEncounterCost += enc.totalClaimCost,
-                           pl.@totalEncounters += 1,
-                           pvdr.@totalEncounters += 1
+                           pl.@totalProviderEncounters += 1,
+                           pvdr.@totalProviderEncounters += 1
                           POST-ACCUM
                            pvdr.@totalPatients += pvdr.@patients.size()
-                          ORDER BY pvdr.@totalPatients DESC;
+                          HAVING pvdr.@patients.size() > 1
+                          ORDER BY pvdr.@totalPatients DESC
+                          LIMIT 25;
 
 
-  PRINT @@maxEncounterCost; PRINT @@minEncounterCost; 
+  // verify Encounter totals match
+  patientEncounters = SELECT enc 
+                      FROM patientsList:pl-(ENCOUNTER_FOR_PATIENT:pe)-Encounter:enc;
+  
+  PRINT @@maxEncounterCost; PRINT @@minEncounterCost; PRINT @@totalEncountersWithProviders; 
+  PRINT patientEncounters.size();
   PRINT providersWithPatients;
   PRINT patientsList;
-  
-  
-  //provPatients = SELECT p
-  //               FROM providerList:pl-(ENCOUNTER_HAS_PROVIDER:prov_enc)-Encounter:enc-(ENCOUNTER_FOR_PATIENT:pat_enc)-Patient:p
-  //               ACCUM
-  //                 pl.@provCount += 1;
   
 }
