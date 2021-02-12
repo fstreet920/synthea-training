@@ -1,0 +1,8 @@
+CREATE QUERY findProvider(STRING providerID) FOR GRAPH simpleHealth { 
+  
+  providerList = {Providers.*};
+  
+  provider = SELECT prov from providerList:prov WHERE prov.provider_id == providerID;
+  
+  PRINT provider;
+}

@@ -1,0 +1,63 @@
+CREATE OR REPLACE QUERY AddingEdgesForProviderReferral(/* Parameters here */) FOR GRAPH simpleHealth SYNTAX V2{ 
+// Provider/patient sets
+  SetAccum<VERTEX> @providers;
+  SetAccum<STRING> @patients;
+  SetAccum<VERTEX> @ReferringProvider;
+  
+  // Provider Maps of Accums
+  MapAccum<VERTEX<Providers>, SetAccum<STRING>>@pvdrPatients;
+  MapAccum<VERTEX<Providers>, SumAccum<INT>>@sharedPatientCnt;
+  
+  
+  
+  // seed the patientsList and providersList
+  patientsList = {Patient.*};
+  
+    
+  // select providers from patient's encounters  
+  providersWithPatients = SELECT pvdr
+                          FROM patientsList:pl-(ENCOUNTER_FOR_PATIENT:pe)-Encounter:enc-(ENCOUNTER_HAS_PROVIDER)-Providers:pvdr
+                          ACCUM  
+                            pl.@providers += pvdr,  // keep a set of the patient's providers
+                            pvdr.@patients += pl.patient_id // keep a set of a provider's patients
+                          POST-ACCUM
+                            // strip off first patient's provider as the Referring Provider
+                            FOREACH prov IN pl.@providers DO
+                               pl.@ReferringProvider = prov,
+                               BREAK
+                            END,
+                            // remove the referring provider from the list of patient's providers
+                            pl.@providers = pl.@providers MINUS pl.@ReferringProvider;
+  
+  // select providers filling out the MapAccum, @pvdrPatients and @sharedPatientCnt
+  providerList = SELECT pvdr
+                  FROM providersWithPatients:pvwp-(ENCOUNTER_HAS_PROVIDER)-Encounter:enc-(ENCOUNTER_FOR_PATIENT)-Patient:pat-(ENCOUNTER_FOR_PATIENT)-Encounter:enc2-(ENCOUNTER_HAS_PROVIDER)-Providers:pvdr
+                  WHERE pvwp != pvdr
+                  ACCUM
+                    IF pvwp != pvdr THEN
+                       // add the provider and their patient set to the MapAccum
+                       pvwp.@pvdrPatients += (pvdr ->pvdr.@patients)
+                    END
+                  POST-ACCUM
+                      // walk the provider's patients and see how many shared
+                    FOREACH (prov,ptntList) IN pvdr.@pvdrPatients DO
+                      FOREACH ptnt IN ptntList DO
+                         IF pvdr.@patients.contains(ptnt) THEN
+                            // shared patient
+                            pvdr.@sharedPatientCnt += (prov->1)
+                         END
+                      END
+                    END;
+  
+  // Select providers and create the referral edges from the @sharedPatientCnt MapAccum
+  providerListEdgesInsert = SELECT pvdr
+                  FROM providerList:pvdr
+                  POST-ACCUM
+                    FOREACH (prov,patientcnt) IN pvdr.@sharedPatientCnt DO
+                       INSERT INTO referral VALUES(pvdr,prov,patientcnt)
+                    END;                 
+                  
+  
+  PRINT providerList;                          
+  
+}
