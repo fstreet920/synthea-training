@@ -1,0 +1,31 @@
+CREATE QUERY PatientConnections(VERTEX <Patient> patient) FOR GRAPH simpleHealth SYNTAX V2{ 
+  OrAccum @visited = FALSE;
+  SetAccum<EDGE> @@edgeSet;
+  SetAccum<VERTEX <Patient>> @@connectedPatients;
+  
+  startingPatient = {patient};
+  
+  neighboringPatients (ANY) = SELECT v 
+                              FROM startingPatient:p-( :e)-:v 
+                              ACCUM
+                                @@edgeSet += e,
+                                p.@visited += TRUE,
+                                v.@visited += TRUE;
+  
+  WHILE neighboringPatients.size() > 0 DO
+        neighboringPatients = SELECT tgt
+                              FROM neighboringPatients:src-( :e)- :tgt
+                              WHERE tgt.@visited == FALSE
+                              ACCUM
+                                @@edgeSet += e,
+                                IF tgt.type == "Patient" THEN
+                                  @@connectedPatients += tgt
+                                END 
+                              POST-ACCUM
+                                tgt.@visited += TRUE;
+  END;
+  
+  
+  PRINT @@edgeSet; 
+  PRINT @@connectedPatients;
+}
