@@ -1,9 +1,0 @@
-CREATE QUERY providersWithMostPatients(/* Parameters here */) FOR GRAPH simpleHealth { 
-  /* Write query logic here */ 
-  
-  // good example easy to extend 
-  // Providers with highest avg charge
-  // Patients that paid the most
-  // Providers that have seen the most patients since 2015
-  PRINT "providersWithMostPatients works!"; 
-}
