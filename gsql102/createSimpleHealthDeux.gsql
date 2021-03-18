@@ -1,0 +1,55 @@
+DROP GRAPH simpleHealthDeux
+
+CREATE GRAPH simpleHealthDeux()
+
+USE GRAPH simpleHealthDeux
+
+CREATE SCHEMA_CHANGE JOB createSimpleHealthDeux FOR GRAPH simpleHealthDeux {
+    ADD VERTEX Patient(PRIMARY_ID patient_id STRING, lastName STRING, firstName STRING, maiden STRING,
+                        birthday DATETIME, ssn STRING, license STRING, passport STRING,
+                        healthcareExpense DOUBLE, healthcareCoverage DOUBLE, suffix STRING, 
+                        prefix STRING, maritalStatus STRING, race STRING, ethnicity STRING, gender STRING, birthplace STRING,
+                        address STRING, city STRING, state STRING, county STRING, zip STRING, lat DOUBLE,lon DOUBLE) 
+                        WITH primary_id_as_attribute="true";
+
+    ADD VERTEX Encounter(PRIMARY_ID encounter_id STRING, baseEncounterCost DOUBLE, totalClaimCost DOUBLE, 
+                        payerCoverage DOUBLE, classType STRING, startTime DATETIME, endTime DATETIME) 
+                        WITH primary_id_as_attribute="true";
+
+    ADD VERTEX Organizations(PRIMARY_ID organization_id STRING, name STRING, address STRING, city STRING, state STRING, 
+                        zip STRING, lat DOUBLE,lon DOUBLE, revenue DOUBLE, utilization INT, 
+                        phone STRING) WITH primary_id_as_attribute="true";
+
+    ADD VERTEX Providers(PRIMARY_ID provider_id STRING, name STRING, gender STRING, utilization INT, specialty STRING, 
+                        address STRING, city STRING, state STRING, zip STRING, lat DOUBLE,lon DOUBLE) 
+                        WITH primary_id_as_attribute="true";
+
+    ADD VERTEX Careplans(PRIMARY_ID careplan_id STRING, description STRING, startDate DATETIME, 
+                        endDate DATETIME) WITH primary_id_as_attribute="true";
+
+    ADD VERTEX SnomedCode(PRIMARY_ID snomed_code STRING, description STRING) WITH primary_id_as_attribute="true";
+
+    ADD VERTEX Immunizations(PRIMARY_ID immunization_id STRING, immunization_code STRING, description STRING, dateOfImmunization DATETIME, baseCost DOUBLE) WITH primary_id_as_attribute="true";
+
+    ADD VERTEX Symptoms(PRIMARY_ID symptom_id STRING, race STRING, ethnicity STRING, gender STRING, symptom STRING, symptomValue INT, pathology STRING) with primary_id_as_attribute="true";
+
+
+
+    ADD UNDIRECTED EDGE PATIENT_HAS_CAREPLAN(FROM Careplans, TO Patient);
+    ADD UNDIRECTED EDGE ENCOUNTER_FOR_PATIENT(FROM Encounter, TO Patient);
+    ADD UNDIRECTED EDGE PROVIDER_HAS_ORGANIZATION(FROM Providers, TO Organizations);
+    ADD UNDIRECTED EDGE ENCOUNTER_HAS_PROVIDER(FROM Encounter, TO Providers);
+    ADD UNDIRECTED EDGE ENCOUNTER_UNDER_ORGANIZATION(FROM Encounter, TO Organizations);
+    ADD DIRECTED EDGE ENCOUNTER_CODE(FROM Encounter, TO SnomedCode);
+    ADD DIRECTED EDGE ENCOUNTER_REASON_CODE(FROM Encounter, TO SnomedCode);
+
+    ADD UNDIRECTED EDGE PATIENT_HAS_IMMUNIZATION(FROM Immunizations, TO Patient);
+    ADD UNDIRECTED EDGE ENCOUNTER_FOR_IMMUNIZATION(FROM Immunizations, TO Encounter);
+    ADD DIRECTED EDGE IMMUNIZATION_CODE(FROM Immunizations, TO SnomedCode);
+
+    ADD UNDIRECTED EDGE PATIENT_HAS_SYMPTOM(FROM Patient, To Symptoms, ageBegin INT, ageEnd INT);
+
+    ADD DIRECTED EDGE REFERRAL (FROM Providers, TO Providers, reffered INT) WITH REVERSE_EDGE="REFERRED_BY";
+}
+
+RUN SCHEMA_CHANGE JOB createSimpleHealthDeux

@@ -1,0 +1,64 @@
+USE GRAPH simpleHealth
+
+DROP JOB loadSimpleHealthData
+
+CREATE LOADING JOB loadSimpleHealthData FOR GRAPH simpleHealth {
+
+    DEFINE FILENAME care_plans = "/home/tigergraph/tigergraph/data/gui/loading_data/careplans.csv";
+    DEFINE FILENAME encounters = "/home/tigergraph/tigergraph/data/gui/loading_data/encounters.csv";
+    DEFINE FILENAME immunizations = "/home/tigergraph/tigergraph/data/gui/loading_data/immunizations.csv";
+    DEFINE FILENAME organizations = "/home/tigergraph/tigergraph/data/gui/loading_data/organizations.csv";    
+    DEFINE FILENAME symptoms = "/home/tigergraph/tigergraph/data/gui/loading_data/symptoms.csv";
+    DEFINE FILENAME patients = "/home/tigergraph/tigergraph/data/gui/loading_data/patients.csv";
+    DEFINE FILENAME providers = "/home/tigergraph/tigergraph/data/gui/loading_data/providers.csv";
+
+    # Id,START,STOP,PATIENT,ENCOUNTER,CODE,DESCRIPTION,REASONCODE,REASONDESCRIPTION
+    LOAD care_plans
+        TO VERTEX Careplans VALUES ($"Id", $"DESCRIPTION", $"START", $"STOP"),
+        TO EDGE PATIENT_HAS_CAREPLAN VALUES ($"Id", $"PATIENT")
+        USING HEADER="true", SEPARATOR=",";
+
+    # Id,START,STOP,PATIENT,ORGANIZATION,PROVIDER,PAYER,ENCOUNTERCLASS,CODE,DESCRIPTION,BASE_ENCOUNTER_COST,TOTAL_CLAIM_COST,PAYER_COVERAGE,REASONCODE,REASONDESCRIPTION
+    LOAD encounters
+        TO VERTEX Encounter VALUES ($"Id", $"BASE_ENCOUNTER_COST", $"TOTAL_CLAIM_COST", $"PAYER_COVERAGE", $"ENCOUNTERCLASS", $"START", $"STOP"),
+        TO VERTEX SnomedCode VALUES ($"CODE", $"DESCRIPTION"),
+        TO VERTEX SnomedCode VALUES ($"REASONCODE", $"REASONDESCRIPTION"),
+        TO EDGE ENCOUNTER_FOR_PATIENT VALUES ($"Id", $"PATIENT"),
+        TO EDGE ENCOUNTER_UNDER_ORGANIZATION VALUES ($"Id", $"ORGANIZATION"),
+        TO EDGE ENCOUNTER_HAS_PROVIDER VALUES ($"Id", $"PROVIDER"),
+        TO EDGE ENCOUNTER_CODE VALUES ($"Id", $"CODE"),
+        TO EDGE ENCOUNTER_REASON_CODE VALUES ($"Id", $"REASONCODE")
+        USING HEADER="true", SEPARATOR=",";
+
+    # ID,DATE,PATIENT,ENCOUNTER,CODE,DESCRIPTION,BASE_COST
+    LOAD immunizations
+        TO VERTEX Immunizations VALUES ($"ID", $"CODE", $"DESCRIPTION", $"DATE", $"BASE_COST"),
+        TO VERTEX SnomedCode VALUES ($"CODE", $"DESCRIPTION"),
+        TO EDGE IMMUNIZATION_CODE VALUES ($"ID", $"CODE"),
+        TO EDGE PATIENT_HAS_IMMUNIZATION VALUES ($"ID", $"PATIENT"),
+        TO EDGE ENCOUNTER_FOR_IMMUNIZATION VALUES ($"ID", $"ENCOUNTER")
+        USING HEADER="true", SEPARATOR=",";
+
+    # Id,NAME,ADDRESS,CITY,STATE,ZIP,LAT,LON,PHONE,REVENUE,UTILIZATION
+    LOAD organizations
+        TO VERTEX Organizations VALUES ($"Id", $"NAME", $"ADDRESS", $"CITY", $"STATE", $"ZIP", $"LAT", $"LON", $"REVENUE", $"UTILIZATION", $"PHONE")
+        USING HEADER="true", SEPARATOR=",";
+
+    # ID,PATIENT,GENDER,RACE,ETHNICITY,AGE_BEGIN,AGE_END,PATHOLOGY,NUM_SYMPTOMS,SYMPTOMS
+    LOAD symptoms
+        TO VERTEX Symptoms VALUES($"ID", $"RACE", $"ETHNICITY", $"GENDER", $"SYMPTOMS", $"NUM_SYMPTOMS", $"PATHOLOGY"),
+        TO EDGE PATIENT_HAS_SYMPTOM VALUES($"PATIENT", $"ID", $"AGE_BEGIN", $"AGE_END")
+        USING HEADER="true", SEPARATOR=",";
+
+    # Id,BIRTHDATE,DEATHDATE,SSN,DRIVERS,PASSPORT,PREFIX,FIRST,LAST,SUFFIX,MAIDEN,MARITAL,RACE,ETHNICITY,GENDER,BIRTHPLACE,ADDRESS,CITY,STATE,COUNTY,ZIP,LAT,LON,HEALTHCARE_EXPENSES,HEALTHCARE_COVERAGE
+    LOAD patients
+        TO VERTEX Patient VALUES ($"Id", $"LAST", $"FIRST", $"MAIDEN", $"BIRTHDATE", $"SSN", $"DRIVERS", $"PASSPORT", $"HEALTHCARE_EXPENSES", $"HEALTHCARE_COVERAGE", $"SUFFIX", $"PREFIX", $"MARITAL", $"RACE", $"ETHNICITY", $"GENDER", $"BIRTHPLACE", $"ADDRESS", $"CITY", $"STATE", $"COUNTY", $"ZIP", $"LAT", $"LON") USING HEADER="true", SEPARATOR=",";
+    
+    # Id,ORGANIZATION,NAME,GENDER,SPECIALITY,ADDRESS,CITY,STATE,ZIP,LAT,LON,UTILIZATION
+    LOAD providers
+        TO VERTEX Providers VALUES ($"Id", $"NAME", $"GENDER", $"UTILIZATION", $"SPECIALITY", $"ADDRESS", $"CITY", $"STATE", $"ZIP", $"LAT", $"LON"),
+        TO EDGE PROVIDER_HAS_ORGANIZATION VALUES ($"Id", $"ORGANIZATION")
+        USING HEADER="true", SEPARATOR=",";        
+}
+
+RUN LOADING JOB loadSimpleHealthData

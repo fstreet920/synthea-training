@@ -1,0 +1,22 @@
+USE GRAPH simpleHealthDeux
+
+CREATE SCHEMA_CHANGE JOB alter_schema FOR GRAPH simpleHealthDeux {
+    ADD VERTEX Gender(PRIMARY_ID id STRING) WITH STATS="OUTDEGREE_BY_EDGETYPE", PRIMARY_ID_AS_ATTRIBUTE="true";
+    ADD VERTEX Race(PRIMARY_ID id STRING) WITH STATS="OUTDEGREE_BY_EDGETYPE", PRIMARY_ID_AS_ATTRIBUTE="true";
+    ADD VERTEX Ethnicity(PRIMARY_ID id STRING) WITH STATS="OUTDEGREE_BY_EDGETYPE", PRIMARY_ID_AS_ATTRIBUTE="true";
+    ADD VERTEX Pathology(PRIMARY_ID id_name STRING) WITH STATS="OUTDEGREE_BY_EDGETYPE", PRIMARY_ID_AS_ATTRIBUTE="true";
+
+    ALTER VERTEX Patient DROP ATTRIBUTE (gender, race, ethnicity);
+    ALTER VERTEX Providers DROP ATTRIBUTE (gender);
+    ALTER VERTEX Symptoms DROP ATTRIBUTE (race, ethnicity, gender, pathology);
+
+
+    ADD UNDIRECTED EDGE is_gender(FROM Patient, TO Gender|FROM Providers, TO Gender);
+    ADD UNDIRECTED EDGE is_race(FROM Patient, TO Race);
+    ADD UNDIRECTED EDGE has_ethnicity(FROM Patient, TO Ethnicity);
+    ADD UNDIRECTED EDGE has_symptoms(FROM Pathology, TO Symptoms);
+    ADD UNDIRECTED EDGE associated_with(FROM Pathology, TO Ethnicity|FROM Pathology, TO Race|FROM Pathology, TO Gender);
+    ADD UNDIRECTED EDGE patient_has_pathology(FROM Patient, TO Pathology);
+}
+
+RUN SCHEMA_CHANGE JOB alter_schema

@@ -1,0 +1,286 @@
+USE GRAPH simpleHealth
+
+CREATE QUERY GSQLSubQuery(INT a, INT b) FOR GRAPH simpleHealth RETURNS (INT){
+	RETURN a * b;
+}
+ 
+CREATE QUERY GSQLQuery(STRING param) FOR GRAPH simpleHealth {
+	INT I;
+	UINT UI;
+	FLOAT F = 1.0;
+	DOUBLE D = 0.123456;
+	STRING S1 = "StringOne", S2;
+	BOOL T = TRUE, f = false;
+	DATETIME DT;
+
+	PRINT I, UI, F, D, S1, S2, T, DT;
+	
+	I = I + F + D;
+	S2 = "StringTwo";
+
+	PRINT I, S1 + ":" + S2 + ":" + param AS StringConcatenation;
+
+	I = 10;
+	WHILE I > 0 DO
+		PRINT I AS Countdown;
+		PRINT GSQLSubQuery(I, 2) AS TimesTwo;
+		
+		IF I % 2 == 0 THEN
+			PRINT "I is even" AS EvenOdd;
+		ELSE
+			PRINT "I is odd" AS EvenOdd;
+		END;
+	
+		I = I - 1;
+	END;
+}
+
+CREATE QUERY VertexInducedSelection(/* Parameters here */) FOR GRAPH simpleHealth { 
+  
+  // seed set containing all providers
+  providerList = {Providers.*};
+  
+  // Find providers that are not General Practice, Clinical Social Worker, 
+  // Physician Assistant, or contains NURSE
+  
+  specialistList = SELECT spec 
+                   FROM providerList:spec
+                   WHERE spec.specialty != "GENERAL PRACTICE"
+                       AND spec.specialty != "CLINICAL SOCIAL WORKER"
+                       AND spec.specialty != "PHYSICIAN ASSISTANT"
+                       AND spec.specialty NOT LIKE "%NURSE%";
+
+  // print the results - the list size and the vertex instances
+  PRINT specialistList.size(), specialistList;
+  
+}
+
+CREATE QUERY EdgeInducedSelection(/* Parameters here */) FOR GRAPH simpleHealth SYNTAX V2{ 
+  
+ // seed set containing all SnomedCodes
+  snomedCodeList = {SnomedCode.*};
+
+  // seed set containing all encounters
+  encountersList = {Encounter.*};
+  
+  PRINT snomedCodeList.size(); PRINT snomedCodeList;
+
+  // select codes that seem 'wellness related'
+  wellnessCodes = SELECT codes 
+                 FROM snomedCodeList:codes
+                 WHERE codes.description LIKE "%Well%"
+                      OR codes.description LIKE "%check-up%"
+                      OR codes.description LIKE "%General examination%";
+  
+  PRINT wellnessCodes.size(); PRINT wellnessCodes;
+  
+  // wellness encounters based on Snomed Codes
+  wellnessEncounters = SELECT wellness
+                       FROM wellnessCodes:code-(<ENCOUNTER_CODE:e)-Encounter:wellness;
+
+  PRINT wellnessEncounters.size(); PRINT wellnessEncounters;
+  
+  // wellness codes from encounters classified as wellness
+  wellnessCodesFromEncounters = SELECT enccodes
+                                FROM encountersList:enc-(ENCOUNTER_CODE>:ec)-SnomedCode:enccodes
+                                WHERE enc.classType == "wellness";
+  
+  PRINT wellnessCodesFromEncounters.size();PRINT wellnessCodesFromEncounters;
+  
+  // Death Certificate is 'Wellness'
+  deathCertEncounters = SELECT enc_death
+                       FROM snomedCodeList:code-(<ENCOUNTER_CODE:e)-Encounter:enc_death
+                       WHERE code.description == "Death Certification";
+  
+  PRINT deathCertEncounters.size();PRINT deathCertEncounters;
+
+}
+
+CREATE QUERY MultiHopTraversal(/* Parameters here */) FOR GRAPH simpleHealth SYNTAX V2{ 
+  // seed our symptoms
+  symptomList = {Symptoms.*};
+  
+  // get covid related symptoms
+  covidRelated = SELECT cvd 
+                 FROM symptomList:cvd
+                 WHERE cvd.pathology LIKE "%COVID-19";
+  PRINT covidRelated.size(); PRINT covidRelated;
+  
+  // find providers treating patients with covid related symptoms
+  providersWithCovidRelatedPatients = SELECT prov
+                                      FROM covidRelated:cvd-(PATIENT_HAS_SYMPTOM:ps)-Patient:p-(ENCOUNTER_FOR_PATIENT:pe)-Encounter:e-(ENCOUNTER_HAS_PROVIDER:eprov)-Providers:prov;
+  
+  PRINT providersWithCovidRelatedPatients.size();
+       
+  // find providers treating patients that have Suspected COVID-19
+  providers2 = SELECT pv
+               FROM providersWithCovidRelatedPatients:pv-(ENCOUNTER_HAS_PROVIDER.ENCOUNTER_FOR_PATIENT.PATIENT_HAS_SYMPTOM)-Symptoms:s
+               WHERE s.pathology LIKE "%Suspected COVID-19%";
+  
+  PRINT providers2.size();
+
+  // how many confirmed COVID-19
+  covidConfirmed = SELECT cvd 
+                 FROM symptomList:cvd
+                 WHERE cvd.pathology == "COVID-19";
+  PRINT covidConfirmed.size();
+
+  // how many suspected COVID-19
+  covidSuspected = SELECT cvd 
+                 FROM symptomList:cvd
+                 WHERE cvd.pathology == "Suspected COVID-19";
+  PRINT covidSuspected.size();
+  
+  
+}
+
+CREATE QUERY AccumMedInfo() FOR GRAPH simpleHealth SYNTAX V2{ 
+  // Provider/patient sets
+  SetAccum<STRING> @patients;
+  SetAccum<STRING> @providers;
+  SumAccum<INT> @totalPatients;
+  
+  // encounter costs
+  SumAccum<FLOAT> @cost;
+  MaxAccum<FLOAT> @@maxEncounterCost;
+  MinAccum<FLOAT> @@minEncounterCost;
+  
+  // encounters totals
+  SumAccum<INT> @@totalEncountersWithProviders;
+  SumAccum<INT> @totalProviderEncounters;
+  
+  // seed the patientsList and providersList
+  patientsList = {Patient.*};
+  
+    
+  // select providers from patient's encounters  
+  providersWithPatients = SELECT pvdr
+                          FROM patientsList:pl-(ENCOUNTER_FOR_PATIENT:pe)-Encounter:enc-(ENCOUNTER_HAS_PROVIDER)-Providers:pvdr
+                          ACCUM
+                           //Global Accumulators
+                           @@maxEncounterCost += enc.totalClaimCost,
+                           @@minEncounterCost += enc.totalClaimCost,
+                           @@totalEncountersWithProviders += 1,
+  
+                           //Vertex Attached
+                           pvdr.@patients += pl.patient_id,
+                           pl.@providers += pvdr.provider_id,
+                           pl.@cost += enc.totalClaimCost - enc.payerCoverage,
+                           pvdr.@cost += enc.totalClaimCost,
+                           pl.@totalProviderEncounters += 1,
+                           pvdr.@totalProviderEncounters += 1
+                          POST-ACCUM
+                           pvdr.@totalPatients += pvdr.@patients.size()
+                          HAVING pvdr.@patients.size() > 1
+                          ORDER BY pvdr.@totalPatients DESC
+                          LIMIT 25;
+
+
+  // verify Encounter totals match
+  patientEncounters = SELECT enc 
+                      FROM patientsList:pl-(ENCOUNTER_FOR_PATIENT:pe)-Encounter:enc;
+  
+  PRINT @@maxEncounterCost; PRINT @@minEncounterCost; PRINT @@totalEncountersWithProviders; 
+  PRINT patientEncounters.size();
+  PRINT providersWithPatients;
+  PRINT patientsList;
+  
+}
+
+CREATE QUERY PatientConnections(VERTEX <Patient> patient) FOR GRAPH simpleHealth SYNTAX V2{ 
+  OrAccum @visited = FALSE;
+  SetAccum<EDGE> @@edgeSet;
+  SetAccum<VERTEX <Patient>> @@connectedPatients;
+  
+  startingPatient = {patient};
+  
+  neighboringPatients (ANY) = SELECT v 
+                              FROM startingPatient:p-( :e)-:v 
+                              ACCUM
+                                @@edgeSet += e,
+                                p.@visited += TRUE,
+                                v.@visited += TRUE;
+  
+  WHILE neighboringPatients.size() > 0 DO
+        neighboringPatients = SELECT tgt
+                              FROM neighboringPatients:src-( :e)- :tgt
+                              WHERE tgt.@visited == FALSE
+                              ACCUM
+                                @@edgeSet += e,
+                                IF tgt.type == "Patient" THEN
+                                  @@connectedPatients += tgt
+                                END 
+                              POST-ACCUM
+                                tgt.@visited += TRUE;
+  END;
+  
+  
+  PRINT @@edgeSet; 
+  PRINT @@connectedPatients;
+}
+
+CREATE QUERY AddingEdgesForProviderReferral(/* Parameters here */) FOR GRAPH simpleHealth SYNTAX V2{ 
+// Provider/patient sets
+  SetAccum<VERTEX> @providers;
+  SetAccum<STRING> @patients;
+  SetAccum<VERTEX> @ReferringProvider;
+  
+  // Provider Maps of Accums
+  MapAccum<VERTEX<Providers>, SetAccum<STRING>>@pvdrPatients;
+  MapAccum<VERTEX<Providers>, SumAccum<INT>>@sharedPatientCnt;
+  
+  
+  
+  // seed the patientsList and providersList
+  patientsList = {Patient.*};
+  
+    
+  // select providers from patient's encounters  
+  providersWithPatients = SELECT pvdr
+                          FROM patientsList:pl-(ENCOUNTER_FOR_PATIENT:pe)-Encounter:enc-(ENCOUNTER_HAS_PROVIDER)-Providers:pvdr
+                          ACCUM  
+                            pl.@providers += pvdr,  // keep a set of the patient's providers
+                            pvdr.@patients += pl.patient_id // keep a set of a provider's patients
+                          POST-ACCUM
+                            // strip off first patient's provider as the Referring Provider
+                            FOREACH prov IN pl.@providers DO
+                               pl.@ReferringProvider = prov,
+                               BREAK
+                            END,
+                            // remove the referring provider from the list of patient's providers
+                            pl.@providers = pl.@providers MINUS pl.@ReferringProvider;
+  
+  // select providers filling out the MapAccum, @pvdrPatients and @sharedPatientCnt
+  providerList = SELECT pvdr
+                  FROM providersWithPatients:pvwp-(ENCOUNTER_HAS_PROVIDER)-Encounter:enc-(ENCOUNTER_FOR_PATIENT)-Patient:pat-(ENCOUNTER_FOR_PATIENT)-Encounter:enc2-(ENCOUNTER_HAS_PROVIDER)-Providers:pvdr
+                  WHERE pvwp != pvdr
+                  ACCUM
+                    IF pvwp != pvdr THEN
+                       // add the provider and their patient set to the MapAccum
+                       pvwp.@pvdrPatients += (pvdr ->pvdr.@patients)
+                    END
+                  POST-ACCUM
+                      // walk the provider's patients and see how many shared
+                    FOREACH (prov,ptntList) IN pvdr.@pvdrPatients DO
+                      FOREACH ptnt IN ptntList DO
+                         IF pvdr.@patients.contains(ptnt) THEN
+                            // shared patient
+                            pvdr.@sharedPatientCnt += (prov->1)
+                         END
+                      END
+                    END;
+  
+  // Select providers and create the referral edges from the @sharedPatientCnt MapAccum
+  providerListEdgesInsert = SELECT pvdr
+                  FROM providerList:pvdr
+                  POST-ACCUM
+                    FOREACH (prov,patientcnt) IN pvdr.@sharedPatientCnt DO
+                       INSERT INTO REFERRAL VALUES(pvdr,prov,patientcnt)
+                    END;                 
+                  
+  
+  PRINT providerList;                          
+  
+}
+
+INSTALL QUERY ALL
